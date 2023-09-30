@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { clsx } from 'clsx'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+const route = useRoute()
 </script>
 
 <template>
@@ -8,8 +10,26 @@ import { RouterLink, RouterView } from 'vue-router'
       <div class="container mx-auto flex justify-between shadow shadow-base-100">
         <RouterLink class="btn btn-ghost btn-sm" to="/">GoTrue UI</RouterLink>
         <nav class="flex gap-2">
-          <RouterLink class="btn btn-ghost btn-sm" to="/">Users</RouterLink>
-          <RouterLink class="btn btn-ghost btn-sm" to="/sessions">Sessions</RouterLink>
+          <RouterLink
+            :class="
+              clsx('btn btn-sm', {
+                'btn-secondary': route.name === 'users',
+                'btn-ghost': route.name !== 'users'
+              })
+            "
+            to="/"
+            >Users</RouterLink
+          >
+          <RouterLink
+            :class="
+              clsx('btn btn-sm', {
+                'btn-secondary': route.name === 'audit-log',
+                'btn-ghost': route.name !== 'audit-log'
+              })
+            "
+            to="/audit-log"
+            >Audit log</RouterLink
+          >
         </nav>
       </div>
     </header>

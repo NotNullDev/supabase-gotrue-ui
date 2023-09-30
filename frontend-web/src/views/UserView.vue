@@ -1,9 +1,28 @@
 <script setup lang="ts">
 import type { User } from '@supabase/gotrue-js'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { auth } from '../lib/gotrue'
 
 const users = ref<User[]>([])
+const filters = ref({
+  name: ''
+})
+const filteredUsers = computed(() => {
+  return users.value.filter((u) => {
+    let ok = true
+
+    ok = u.email?.includes(filters.value.name) ?? false
+    if (ok) return true
+
+    ok = u.role?.includes(filters.value.name) ?? false
+    if (ok) return true
+
+    ok = u.aud?.includes(filters.value.name) ?? false
+    if (ok) return true
+
+    return false
+  })
+})
 const usersToDelete = ref<User[]>([])
 
 onMounted(async () => {
@@ -46,7 +65,12 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
 
     <div class="rounded-md bg-base-100 p-4 my-4 flex justify-between">
       <div>
-        <input type="search" class="input input-bordered input-sm" placeholder="Search" />
+        <input
+          type="search"
+          class="input input-bordered input-sm"
+          placeholder="Search"
+          v-model="filters.name"
+        />
       </div>
       <div>
         <button class="btn btn-error" :disabled="usersToDelete.length === 0">
@@ -74,7 +98,7 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
         </thead>
         <tbody>
           <!-- row 1 -->
-          <tr v-for="user in users" :key="user.id">
+          <tr v-for="user in filteredUsers" :key="user.id">
             <th>
               <label>
                 <input
@@ -100,7 +124,7 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
             </td>
             <td>{{ user.created_at }}</td>
             <th>
-              <RouterLink :to="`/users/${user.id}`" class="btn btn-ghost btn-xs"
+              <RouterLink :to="`/users/${user.id}`" class="btn btn-secondary btn-xs"
                 >details</RouterLink
               >
             </th>

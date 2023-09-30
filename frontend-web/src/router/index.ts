@@ -10,14 +10,15 @@ const router = createRouter({
       component: UsersView
     },
     {
-      path: '/sessions',
-      name: 'sessions',
-      component: () => import('../views/SessionsView.vue')
-    },
-    {
       path: '/users/:id',
       beforeEnter: () => {},
       component: () => import('../views/UserDetailsView.vue')
+    },
+    {
+      path: '/audit-log',
+      name: 'audit-log',
+      beforeEnter: () => {},
+      component: () => import('../views/AuditLogView.vue')
     }
   ]
 })
