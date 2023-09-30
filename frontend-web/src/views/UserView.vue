@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { User } from '@supabase/gotrue-js'
+import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 import { auth } from '../lib/gotrue'
 
@@ -90,6 +91,9 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
               </label>
             </th>
             <th>Email</th>
+            <th>Phone</th>
+            <th>Provider</th>
+            <th>Last sign in</th>
             <th>Role</th>
             <th>Audition</th>
             <th>Created at</th>
@@ -113,19 +117,20 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
                 />
               </label>
             </th>
-            <td>
-              {{ user.email }}
-            </td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.phone }}</td>
+            <td>{{ user.app_metadata.provider }}</td>
+            <td>{{ dayjs(user.last_sign_in_at).format('DD.MM.YYYY HH:mm') }}</td>
             <td>
               {{ user.role }}
             </td>
             <td>
               {{ user.aud }}
             </td>
-            <td>{{ user.created_at }}</td>
+            <td>{{ dayjs(user.created_at).format('DD.MM.YYYY HH:mm') }}</td>
             <th>
               <RouterLink :to="`/users/${user.id}`" class="btn btn-secondary btn-xs"
-                >details</RouterLink
+                >more</RouterLink
               >
             </th>
           </tr>

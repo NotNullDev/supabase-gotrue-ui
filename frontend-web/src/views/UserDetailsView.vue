@@ -14,6 +14,8 @@ const route = useRoute()
 
 const pageState = ref<'metadata' | 'login-history' | 'active-sessions'>('metadata')
 
+const showMore = ref(false)
+
 onMounted(async () => {
   const userId = route.params.id
 
@@ -109,9 +111,23 @@ onMounted(async () => {
       </div>
       <div class="flex gap-2">
         <button class="btn btn-ghost">Invalidate all sessions</button>
-        <div class="h-full w-1 bg-base-300 mx-2"></div>
-        <button class="btn btn-error">Delete user</button>
+        <div class="h-full w-[1px] bg-base-300 mx-2"></div>
+        <button class="btn btn-primary w-[140px]" @click="showMore = !showMore">
+          {{ showMore ? 'hide actions' : 'actions' }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="showMore" class="p-4 bg-base-100 rounded-md flex justify-between mt-2">
+      <div class="gap-2">
+        <button class="btn btn-ghost">Send Reset password</button>
+        <button class="btn btn-ghost">Send magic link</button>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-error">Remove MFA factors</button>
         <button class="btn btn-error">Ban user</button>
+        <div class="h-full w-[1px] bg-base-300 mx-2"></div>
+        <button class="btn btn-error">Delete user</button>
       </div>
     </div>
 
