@@ -57,6 +57,7 @@ function toggleMarkToDelete(user: User, shouldDelete = false) {
     usersToDelete.value = usersToDelete.value.filter((u) => u !== user)
   }
 }
+
 function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
 </script>
 

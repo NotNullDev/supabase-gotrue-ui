@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import JsonEditor from '@/components/JsonEditor.vue'
 import { auth } from '@/lib/gotrue'
 import type { ActiveSession, LoginAudit } from '@/lib/types'
 import type { User } from '@supabase/gotrue-js'
@@ -10,11 +11,13 @@ import { useRoute } from 'vue-router'
 const user = ref<User>()
 const loginHistory = ref<LoginAudit[]>([])
 const activeSessions = ref<ActiveSession[]>([])
+const at = ref('')
 const route = useRoute()
 
 const pageState = ref<'metadata' | 'login-history' | 'active-sessions'>('metadata')
 
-const showMore = ref(false)
+const showActions = ref(false)
+const showUserRaw = ref(false)
 
 onMounted(async () => {
   const userId = route.params.id
@@ -36,6 +39,7 @@ onMounted(async () => {
         Authorization: `Bearer ${authResponse.data.session.access_token}`
       }
     })
+    at.value = authResponse.data.session.access_token
     user.value = (await resp.json()) as User
   } catch (e) {
     console.error(e)
@@ -67,6 +71,98 @@ onMounted(async () => {
     console.error(e)
   }
 })
+
+async function invalidateAllSessions() {
+  try {
+    const resp = await fetch(`http://127.0.0.1:9999/admin/logout/all/${user.value?.id}`, {
+      headers: {
+        Authorization: `Bearer ${at.value}`
+      }
+    })
+    if (!resp.ok) {
+      console.log(`received non-positive response from the server: ${resp.status}`)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function updateUser() {
+  if (!user.value?.id) return
+  const payload = {
+    email: user.value.email,
+    phone: user.value.phone,
+    role: user.value.role,
+    aud: user.value.aud,
+    user_metadata: user.value.user_metadata
+  }
+
+  console.log('updating user with data: ', payload)
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:9999/admin/users/${user.value?.id}`, {
+      headers: {
+        Authorization: `Bearer ${at.value}`,
+        'Content-Type': 'application/json'
+      },
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+    if (!resp.ok) {
+      console.log(`[USER UPDATE] received non-positive response from the server: ${resp.status}`)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function sendPasswordRecovery() {
+  if (!user.value) return
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:9999/recover`, {
+      headers: {
+        Authorization: `Bearer ${at.value}`,
+        'Content-Type': 'application/json'
+      },
+      method: 'POST',
+      body: JSON.stringify({
+        email: user.value.email
+      })
+    })
+    if (!resp.ok) {
+      console.log(
+        `[SEND PASSWORD RECOVERY] received non-positive response from the server: ${resp.status}`
+      )
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function sendMagicLink() {
+  if (!user.value) return
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:9999/magiclink`, {
+      headers: {
+        Authorization: `Bearer ${at.value}`,
+        'Content-Type': 'application/json'
+      },
+      method: 'POST',
+      body: JSON.stringify({
+        email: user.value.email
+      })
+    })
+    if (!resp.ok) {
+      console.log(
+        `[SEND MAGIC LINK] received non-positive response from the server: ${resp.status}`
+      )
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 </script>
 
 <template>
@@ -110,18 +206,20 @@ onMounted(async () => {
         </button>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-ghost">Invalidate all sessions</button>
+        <button class="btn btn-ghost" @click="invalidateAllSessions">
+          Invalidate all sessions
+        </button>
         <div class="h-full w-[1px] bg-base-300 mx-2"></div>
-        <button class="btn btn-primary w-[140px]" @click="showMore = !showMore">
-          {{ showMore ? 'hide actions' : 'actions' }}
+        <button class="btn btn-primary w-[140px]" @click="showActions = !showActions">
+          {{ showActions ? 'hide actions' : 'actions' }}
         </button>
       </div>
     </div>
 
-    <div v-if="showMore" class="p-4 bg-base-100 rounded-md flex justify-between mt-2">
+    <div v-if="showActions" class="p-4 bg-base-100 rounded-md flex justify-between mt-2">
       <div class="gap-2">
-        <button class="btn btn-ghost">Send Reset password</button>
-        <button class="btn btn-ghost">Send magic link</button>
+        <button class="btn btn-ghost" @click="sendPasswordRecovery">Send Reset password</button>
+        <button class="btn btn-ghost" @click="sendMagicLink">Send magic link</button>
       </div>
       <div class="flex gap-2">
         <button class="btn btn-error">Remove MFA factors</button>
@@ -131,10 +229,84 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="pageState === 'metadata'">
-      <h2 class="text-xl my-2">Raw data</h2>
-      <div class="p-4 bg-base-100 rounded-md">
-        <pre>{{ user }}</pre>
+    <div v-if="pageState === 'metadata' && user?.id">
+      <div class="p-4 bg-base-100 rounded-md flex flex-col gap-1 mt-2">
+        <div class="flex justify-between w-full items-center">
+          <div class="flex">
+            <div class="w-[200px]">ID:</div>
+            <div>{{ user.id }}</div>
+          </div>
+          <button class="btn btn-secondary" @click="updateUser">Save changes</button>
+        </div>
+
+        <div class="flex">
+          <div class="w-[200px]">Last sign in at:</div>
+          <div>{{ dayjs(user.last_sign_in_at).format('DD.MM.YYYY HH:mm') }}</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="w-[200px]">Email:</div>
+          <input type="text" class="input input-bordered" v-model="user.email" />
+        </div>
+
+        <div class="flex">
+          <div class="w-[200px]">Email confirmed at:</div>
+          <div>{{ dayjs(user.email_confirmed_at).format('DD.MM.YYYY HH:mm') }}</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="w-[200px]">Phone:</div>
+          <input type="text" class="input input-bordered" v-model="user.phone" />
+        </div>
+
+        <div class="flex">
+          <div class="w-[200px]">Phone confirmed at:</div>
+          <div>{{ dayjs(user.phone_confirmed_at).format('DD.MM.YYYY HH:mm') }}</div>
+        </div>
+
+        <div class="flex">
+          <div class="w-[200px]">Created at:</div>
+          <div>{{ dayjs(user.created_at).format('DD.MM.YYYY HH:mm') }}</div>
+        </div>
+
+        <div class="flex">
+          <div class="w-[200px]">Updated at:</div>
+          <div>{{ dayjs(user.updated_at).format('DD.MM.YYYY HH:mm') }}</div>
+        </div>
+
+        <div class="flex items-center">
+          <div class="w-[200px]">Role:</div>
+          <input type="text" class="input input-bordered" v-model="user.role" />
+        </div>
+
+        <div class="flex items-center">
+          <div class="w-[200px]">Audience:</div>
+          <input type="text" class="input input-bordered" v-model="user.aud" />
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <div>User metadata:</div>
+          <JsonEditor
+            :initial-value="JSON.stringify(user.user_metadata, null, 2)"
+            :key="user.id"
+            @change="
+              (e) => {
+                if (!user) return
+                try {
+                  user.user_metadata = JSON.parse(e)
+                } catch (e) {
+                  console.log('failed to parse value from editor')
+                }
+              }
+            "
+          />
+        </div>
+
+        <button class="btn btn-secondary my-5" @click="showUserRaw = !showUserRaw">
+          Show raw object
+        </button>
+
+        <pre v-if="showUserRaw">{{ user }}</pre>
       </div>
     </div>
 
