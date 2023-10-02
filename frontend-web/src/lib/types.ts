@@ -31,7 +31,7 @@ export type LoginAudit = {
     actor_username: string
     actor_via_sso: boolean
     log_type: string
-    traits: {
+    traits?: {
       provider: string
     }
     ip_address: string

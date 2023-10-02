@@ -163,6 +163,42 @@ async function sendMagicLink() {
     console.error(e)
   }
 }
+
+async function invokeBanDialog() {}
+
+async function banUser(durationHours: number, unban = false) {
+  if (!user.value?.id) return
+  const payload = {
+    ban_duration: unban ? `${durationHours}h` : `none`
+  }
+
+  console.log('updating user with data: ', payload)
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:9999/admin/users/${user.value?.id}`, {
+      headers: {
+        Authorization: `Bearer ${at.value}`,
+        'Content-Type': 'application/json'
+      },
+      method: 'PUT',
+      body: JSON.stringify(payload)k
+    })
+    if (!resp.ok) {
+      console.log(`[BAN USER] received non-positive response from the server: ${resp.status}`)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+  alert('TODO')
+}
+
+function deleteUser() {
+  alert('TODO')
+}
+
+function removeMFAFactors() {
+  alert('TODO')
+}
 </script>
 
 <template>
@@ -222,10 +258,12 @@ async function sendMagicLink() {
         <button class="btn btn-ghost" @click="sendMagicLink">Send magic link</button>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-error">Remove MFA factors</button>
-        <button class="btn btn-error">Ban user</button>
+        <button class="btn btn-error" @click="removeMFAFactors">Remove MFA factors</button>
+        <button class="btn btn-error" @click="invokeBanDialog">
+          {{ !!user?.banned_until ? 'Unban user' : 'Ban user' }}
+        </button>
         <div class="h-full w-[1px] bg-base-300 mx-2"></div>
-        <button class="btn btn-error">Delete user</button>
+        <button class="btn btn-error" @click="deleteUser">Delete user</button>
       </div>
     </div>
 
@@ -237,6 +275,19 @@ async function sendMagicLink() {
             <div>{{ user.id }}</div>
           </div>
           <button class="btn btn-secondary" @click="updateUser">Save changes</button>
+        </div>
+
+        <div class="flex">
+          <div
+            :class="
+              clsx('w-[200px]', {
+                'text-error': !!user.banned_until
+              })
+            "
+          >
+            Banned until:
+          </div>
+          <div class="text-error">{{ dayjs(user.banned_until).format('DD.MM.YYYY HH:mm') }}</div>
         </div>
 
         <div class="flex">
@@ -325,7 +376,7 @@ async function sendMagicLink() {
             <!-- row 1 -->
             <tr v-for="login in loginHistory" :key="login.id">
               <td>{{ dayjs(login.created_at).format('DD.MM.YYYY HH:mm') }}</td>
-              <td>{{ login.payload.traits.provider }}</td>
+              <td>{{ login.payload.traits?.provider }}</td>
               <td>{{ !!login.payload.actor_via_sso }}</td>
             </tr>
           </tbody>
