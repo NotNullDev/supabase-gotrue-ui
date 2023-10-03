@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { auth } from '@/lib/gotrue'
-import type { Audit } from '@/lib/types'
-import { onMounted, ref } from 'vue'
+import AuditLogVue from '@/components/AuditLog.vue';
+import { auth } from '@/lib/gotrue';
+import type { Audit } from '@/lib/types';
+import { onMounted, ref } from 'vue';
 
 let auditLogs = ref<Audit[]>()
 
@@ -27,13 +28,29 @@ onMounted(async () => {
     console.error(e)
   }
 })
+
+const showRawValue = ref(false);
+
 </script>
 <template>
   <main class="container mx-auto pb-10">
     <h1 class="text-3xl font-semibold my-10">Audit log</h1>
-    <h2 class="text-xl my-2">Raw data</h2>
-    <div class="p-4 rounded-md bg-base-100">
+
+    <div class="flex flex-col gap-2">
+
+
+      <div class="flex flex-col gap-1 bg-base-100 rounded-md p-4" v-for="log in auditLogs" :key="log.id">
+        <AuditLogVue :log="log" />
+      </div>
+
+
+    </div>
+
+    <button class="btn btn-secondary mt-5" @click="showRawValue = !showRawValue">Show raw data</button>
+
+    <div class="p-4 rounded-md bg-base-100 mt-5" v-if="showRawValue">
       <pre>{{ auditLogs }}</pre>
     </div>
+
   </main>
 </template>
