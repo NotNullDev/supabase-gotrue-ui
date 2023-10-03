@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import JsonEditor from '@/components/JsonEditor.vue'
+import IconArrowLeftVue from '@/components/icons/IconArrowLeft.vue'
 import { auth } from '@/lib/gotrue'
 import type { ActiveSession, LoginAudit } from '@/lib/types'
+import { useModalStore } from '@/stores/modalStore'
 import type { User } from '@supabase/gotrue-js'
 import { clsx } from 'clsx'
 import dayjs from 'dayjs'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const user = ref<User>()
@@ -19,7 +21,17 @@ const pageState = ref<'metadata' | 'login-history' | 'active-sessions'>('metadat
 const showActions = ref(false)
 const showUserRaw = ref(false)
 
+const modalStore = useModalStore()
+
+const banned_until = computed(() => {
+  return (user.value as any)?.banned_until as string | undefined
+})
+
 onMounted(async () => {
+  await fetchInitialData()
+})
+
+async function fetchInitialData() {
   const userId = route.params.id
 
   const authResponse = await auth.signInWithPassword({
@@ -70,7 +82,23 @@ onMounted(async () => {
   } catch (e) {
     console.error(e)
   }
-})
+}
+
+async function invalidateAllSessionsTrigger() {
+  modalStore.onAccept = async () => {
+    await invalidateAllSessions();
+    await fetchInitialData()
+  }
+
+  modalStore.onReject = () => { }
+
+  modalStore.title = 'Invalidate all user session.';
+  modalStore.body = 'User will be logged out from all devices.'
+  modalStore.acceptButton = 'Invalidate'
+  modalStore.rejectButton = 'Cancel';
+
+  modalStore.open();
+}
 
 async function invalidateAllSessions() {
   try {
@@ -85,6 +113,22 @@ async function invalidateAllSessions() {
   } catch (e) {
     console.error(e)
   }
+}
+
+async function updateUserTrigger() {
+  modalStore.onAccept = async () => {
+    await updateUser();
+    await fetchInitialData()
+  }
+
+  modalStore.onReject = () => { }
+
+  modalStore.title = 'Update user';
+  modalStore.body = 'User data will be update.'
+  modalStore.acceptButton = 'Update'
+  modalStore.rejectButton = 'Cancel';
+
+  modalStore.open();
 }
 
 async function updateUser() {
@@ -116,6 +160,23 @@ async function updateUser() {
   }
 }
 
+async function sendPasswordRecoveryTrigger() {
+  modalStore.onAccept = async () => {
+    await sendPasswordRecovery();
+    await fetchInitialData()
+  }
+
+  modalStore.onReject = () => { }
+
+  modalStore.title = 'Send password revovery';
+  modalStore.body = 'User will receive password recovery on email.'
+  modalStore.acceptButton = 'Send'
+  modalStore.rejectButton = 'Cancel';
+
+  modalStore.open();
+}
+
+
 async function sendPasswordRecovery() {
   if (!user.value) return
 
@@ -138,6 +199,22 @@ async function sendPasswordRecovery() {
   } catch (e) {
     console.error(e)
   }
+}
+
+async function sendMagicLinkTrigger() {
+  modalStore.onAccept = async () => {
+    await sendPasswordRecovery();
+    await fetchInitialData()
+  }
+
+  modalStore.onReject = () => { }
+
+  modalStore.title = 'Send magic link';
+  modalStore.body = 'User will receive magic link on email.'
+  modalStore.acceptButton = 'Send'
+  modalStore.rejectButton = 'Cancel';
+
+  modalStore.open();
 }
 
 async function sendMagicLink() {
@@ -164,12 +241,29 @@ async function sendMagicLink() {
   }
 }
 
-async function invokeBanDialog() {}
+async function invokeBanDialog() {
+  const banDuration = banned_until.value ? 0 : 24;
+  const isUserBaneed = banDuration === 0;
 
-async function banUser(durationHours: number, unban = false) {
+  modalStore.onAccept = async () => {
+    await banUser(banDuration);
+    await fetchInitialData()
+  }
+
+  modalStore.onReject = () => { }
+
+  modalStore.title = isUserBaneed ? "Unban user" : 'Ban user';
+  modalStore.body = isUserBaneed ? 'Action will unban selected user.' : "Action will ban selecter user for 24 hours."
+  modalStore.acceptButton = isUserBaneed ? 'Unban' : 'Ban';
+  modalStore.rejectButton = 'Cancel';
+
+  modalStore.open();
+}
+
+async function banUser(durationHours: number) {
   if (!user.value?.id) return
   const payload = {
-    ban_duration: unban ? `${durationHours}h` : `none`
+    ban_duration: durationHours > 0 ? `${durationHours}h` : `none`
   }
 
   console.log('updating user with data: ', payload)
@@ -181,7 +275,7 @@ async function banUser(durationHours: number, unban = false) {
         'Content-Type': 'application/json'
       },
       method: 'PUT',
-      body: JSON.stringify(payload)k
+      body: JSON.stringify(payload)
     })
     if (!resp.ok) {
       console.log(`[BAN USER] received non-positive response from the server: ${resp.status}`)
@@ -189,7 +283,6 @@ async function banUser(durationHours: number, unban = false) {
   } catch (e) {
     console.error(e)
   }
-  alert('TODO')
 }
 
 function deleteUser() {
@@ -203,46 +296,39 @@ function removeMFAFactors() {
 
 <template>
   <main class="container mx-auto pb-10">
-    <h1 class="text-3xl font-semibold my-10">User Details</h1>
+    <div class="flex gap-2 items-center">
+      <RouterLink to="/">
+        <IconArrowLeftVue class="btn btn-square"></IconArrowLeftVue>
+      </RouterLink>
+      <h1 class="text-3xl font-semibold my-10">User Details</h1>
+    </div>
 
     <div class="p-4 bg-base-100 rounded-md flex justify-between">
       <div class="flex gap-2">
-        <button
-          :class="
-            clsx('btn', {
-              'btn-ghost': pageState !== 'metadata',
-              'btn-secondary': pageState === 'metadata'
-            })
-          "
-          @click="pageState = 'metadata'"
-        >
+        <button :class="clsx('btn', {
+          'btn-ghost': pageState !== 'metadata',
+          'btn-secondary': pageState === 'metadata'
+        })
+          " @click="pageState = 'metadata'">
           Metadata
         </button>
-        <button
-          :class="
-            clsx('btn', {
-              'btn-ghost': pageState !== 'login-history',
-              'btn-secondary': pageState === 'login-history'
-            })
-          "
-          @click="pageState = 'login-history'"
-        >
+        <button :class="clsx('btn', {
+          'btn-ghost': pageState !== 'login-history',
+          'btn-secondary': pageState === 'login-history'
+        })
+          " @click="pageState = 'login-history'">
           Login history
         </button>
-        <button
-          :class="
-            clsx('btn', {
-              'btn-ghost': pageState !== 'active-sessions',
-              'btn-secondary': pageState === 'active-sessions'
-            })
-          "
-          @click="pageState = 'active-sessions'"
-        >
+        <button :class="clsx('btn', {
+          'btn-ghost': pageState !== 'active-sessions',
+          'btn-secondary': pageState === 'active-sessions'
+        })
+          " @click="pageState = 'active-sessions'">
           Active sessions
         </button>
       </div>
       <div class="flex gap-2">
-        <button class="btn btn-ghost" @click="invalidateAllSessions">
+        <button class="btn btn-ghost" @click="invalidateAllSessionsTrigger">
           Invalidate all sessions
         </button>
         <div class="h-full w-[1px] bg-base-300 mx-2"></div>
@@ -254,13 +340,13 @@ function removeMFAFactors() {
 
     <div v-if="showActions" class="p-4 bg-base-100 rounded-md flex justify-between mt-2">
       <div class="gap-2">
-        <button class="btn btn-ghost" @click="sendPasswordRecovery">Send Reset password</button>
-        <button class="btn btn-ghost" @click="sendMagicLink">Send magic link</button>
+        <button class="btn btn-ghost" @click="sendPasswordRecoveryTrigger">Send Reset password</button>
+        <button class="btn btn-ghost" @click="sendMagicLinkTrigger">Send magic link</button>
       </div>
       <div class="flex gap-2">
         <button class="btn btn-error" @click="removeMFAFactors">Remove MFA factors</button>
         <button class="btn btn-error" @click="invokeBanDialog">
-          {{ !!user?.banned_until ? 'Unban user' : 'Ban user' }}
+          {{ !!banned_until ? 'Unban user' : 'Ban user' }}
         </button>
         <div class="h-full w-[1px] bg-base-300 mx-2"></div>
         <button class="btn btn-error" @click="deleteUser">Delete user</button>
@@ -274,20 +360,19 @@ function removeMFAFactors() {
             <div class="w-[200px]">ID:</div>
             <div>{{ user.id }}</div>
           </div>
-          <button class="btn btn-secondary" @click="updateUser">Save changes</button>
+          <button class="btn btn-secondary" @click="updateUserTrigger">Save changes</button>
         </div>
 
         <div class="flex">
-          <div
-            :class="
-              clsx('w-[200px]', {
-                'text-error': !!user.banned_until
-              })
-            "
-          >
+          <div :class="clsx('w-[200px]', {
+            'text-error': !!banned_until
+          })
+            ">
             Banned until:
           </div>
-          <div class="text-error">{{ dayjs(user.banned_until).format('DD.MM.YYYY HH:mm') }}</div>
+          <div class="text-error">
+            {{ banned_until ? dayjs(banned_until).format('DD.MM.YYYY HH:mm') : '' }}
+          </div>
         </div>
 
         <div class="flex">
@@ -337,20 +422,15 @@ function removeMFAFactors() {
 
         <div class="flex flex-col gap-1">
           <div>User metadata:</div>
-          <JsonEditor
-            :initial-value="JSON.stringify(user.user_metadata, null, 2)"
-            :key="user.id"
-            @change="
-              (e) => {
-                if (!user) return
-                try {
-                  user.user_metadata = JSON.parse(e)
-                } catch (e) {
-                  console.log('failed to parse value from editor')
-                }
-              }
-            "
-          />
+          <JsonEditor :initial-value="JSON.stringify(user.user_metadata, null, 2)" :key="user.id" @change="(e) => {
+            if (!user) return
+            try {
+              user.user_metadata = JSON.parse(e)
+            } catch (e) {
+              console.log('failed to parse value from editor')
+            }
+          }
+            " />
         </div>
 
         <button class="btn btn-secondary my-5" @click="showUserRaw = !showUserRaw">
