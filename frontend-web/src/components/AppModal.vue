@@ -13,7 +13,7 @@ const modalStore = useModalStore()
 <template>
   <Teleport to="body">
     <Transition>
-      <div v-if="modalStore.isOpen" :class="clsx('w-[300px] bg-base-200/40 rounded-md shadow shadow-base-300 border border-base-100',
+      <div v-if="modalStore.isOpen" :class="clsx('w-[300px] rounded-md app-shadow-sm  bg-base-100 p-3',
         'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
         'flex flex-col'
       )">

@@ -11,13 +11,19 @@ const router = createRouter({
     },
     {
       path: '/users/:id',
-      beforeEnter: () => {},
+      beforeEnter: () => { },
       component: () => import('../views/UserDetailsView.vue')
+    },
+    {
+      path: '/create-user',
+      name: 'create-user',
+      beforeEnter: () => { },
+      component: () => import('../views/CreateUser.vue')
     },
     {
       path: '/audit-log',
       name: 'audit-log',
-      beforeEnter: () => {},
+      beforeEnter: () => { },
       component: () => import('../views/AuditLogView.vue')
     }
   ]

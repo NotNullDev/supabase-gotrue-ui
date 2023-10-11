@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { User } from '@supabase/gotrue-js'
-import dayjs from 'dayjs'
-import { computed, onMounted, ref } from 'vue'
-import { auth } from '../lib/gotrue'
+import type { User } from '@supabase/gotrue-js';
+import dayjs from 'dayjs';
+import { computed, onMounted, ref } from 'vue';
+import { auth } from '../lib/gotrue';
 
 const users = ref<User[]>([])
 const filters = ref({
@@ -58,7 +58,7 @@ function toggleMarkToDelete(user: User, shouldDelete = false) {
   }
 }
 
-function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
+function toggleMarkToDeleteAll(user: User, shouldDelete = false) { }
 </script>
 
 <template>
@@ -67,14 +67,10 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
 
     <div class="rounded-md bg-base-100 p-4 my-4 flex justify-between">
       <div>
-        <input
-          type="search"
-          class="input input-bordered input-sm"
-          placeholder="Search"
-          v-model="filters.name"
-        />
+        <input type="search" class="input input-bordered input-sm" placeholder="Search" v-model="filters.name" />
       </div>
-      <div>
+      <div class="flex gap-4">
+        <RouterLink to="create-user" class="btn btn-primary">new user</RouterLink>
         <button class="btn btn-error" :disabled="usersToDelete.length === 0">
           delete {{ usersToDelete.length ? usersToDelete.length : '' }}
         </button>
@@ -106,16 +102,11 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
           <tr v-for="user in filteredUsers" :key="user.id">
             <th>
               <label>
-                <input
-                  type="checkbox"
-                  class="checkbox"
-                  @input="
-                    (e) => {
-                      console.log(e)
-                      toggleMarkToDelete(user, (e.currentTarget as HTMLInputElement).checked)
-                    }
-                  "
-                />
+                <input type="checkbox" class="checkbox" @input="(e) => {
+                  console.log(e)
+                  toggleMarkToDelete(user, (e.currentTarget as HTMLInputElement).checked)
+                }
+                  " />
               </label>
             </th>
             <td>{{ user.email }}</td>
@@ -130,9 +121,7 @@ function toggleMarkToDeleteAll(user: User, shouldDelete = false) {}
             </td>
             <td>{{ dayjs(user.created_at).format('DD.MM.YYYY HH:mm') }}</td>
             <th>
-              <RouterLink :to="`/users/${user.id}`" class="btn btn-secondary btn-xs"
-                >more</RouterLink
-              >
+              <RouterLink :to="`/users/${user.id}`" class="btn btn-secondary btn-xs">more</RouterLink>
             </th>
           </tr>
         </tbody>

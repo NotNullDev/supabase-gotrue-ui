@@ -8,13 +8,14 @@ import type { User } from '@supabase/gotrue-js'
 import { clsx } from 'clsx'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const user = ref<User>()
 const loginHistory = ref<LoginAudit[]>([])
 const activeSessions = ref<ActiveSession[]>([])
 const at = ref('')
 const route = useRoute()
+const router = useRouter()
 
 const pageState = ref<'metadata' | 'login-history' | 'active-sessions'>('metadata')
 
@@ -243,7 +244,7 @@ async function sendMagicLink() {
 
 async function invokeBanDialog() {
   const banDuration = banned_until.value ? 0 : 24;
-  const isUserBaneed = banDuration === 0;
+  const isUserBanned = banDuration === 0;
 
   modalStore.onAccept = async () => {
     await banUser(banDuration);
@@ -252,9 +253,9 @@ async function invokeBanDialog() {
 
   modalStore.onReject = () => { }
 
-  modalStore.title = isUserBaneed ? "Unban user" : 'Ban user';
-  modalStore.body = isUserBaneed ? 'Action will unban selected user.' : "Action will ban selecter user for 24 hours."
-  modalStore.acceptButton = isUserBaneed ? 'Unban' : 'Ban';
+  modalStore.title = isUserBanned ? "Unban user" : 'Ban user';
+  modalStore.body = isUserBanned ? 'Action will unban selected user.' : "Action will ban selecter user for 24 hours."
+  modalStore.acceptButton = isUserBanned ? 'Unban' : 'Ban';
   modalStore.rejectButton = 'Cancel';
 
   modalStore.open();
@@ -285,8 +286,46 @@ async function banUser(durationHours: number) {
   }
 }
 
-function deleteUser() {
-  alert('TODO')
+async function deleteUserTrigger() {
+  modalStore.onAccept = async () => {
+    const deletionSucceed = await deleteUser();
+    if (deletionSucceed) {
+      await router.push("/")
+    }
+  }
+
+  modalStore.onReject = () => { }
+
+  modalStore.title = 'Delete user';
+  modalStore.body = 'User will deleted permanently. This operation is irreversible!.'
+  modalStore.acceptButton = 'Delete'
+  modalStore.rejectButton = 'Cancel';
+
+  modalStore.open();
+}
+
+
+async function deleteUser(): Promise<boolean> {
+  if (!user.value?.id) return false;
+
+  try {
+    const resp = await fetch(`http://127.0.0.1:9999/admin/users/${user.value?.id}`, {
+      headers: {
+        Authorization: `Bearer ${at.value}`,
+        'Content-Type': 'application/json'
+      },
+      method: 'DELETE'
+    })
+    if (!resp.ok) {
+      console.log(`[DELETE USER] received non-positive response from the server: ${resp.status}`)
+      return false;
+    }
+
+  } catch (e) {
+    console.error(e)
+  }
+
+  return true;
 }
 
 function removeMFAFactors() {
